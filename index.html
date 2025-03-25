@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sorteio Samsung A06</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --cor-primaria: #1428A0; /* Azul Samsung */
+            --cor-secundaria: #FFD700; /* Dourado */
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: var(--cor-primaria);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #resultado {
+            font-size: 72px;
+            font-weight: bold;
+            color: var(--cor-secundaria);
+            text-align: center;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            background: var(--cor-primaria);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--cor-primaria);
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-sortear {
+            background: var(--cor-primaria);
+            color: white;
+        }
+        .btn-sortear:hover {
+            background: #0d1c7a;
+        }
+        .btn-pdf {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-pdf:hover {
+            background: #c0392b;
+        }
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+        }
+        .btn-whatsapp:hover {
+            background: #128C7E;
+        }
+        .btn-novo {
+            background: #9b59b6;
+            color: white;
+        }
+        .btn-novo:hover {
+            background: #8e44ad;
+        }
+        .hidden {
+            display: none;
+        }
+        @media (max-width: 600px) {
+            #resultado {
+                font-size: 48px;
+                padding: 15px;
+            }
+            .btn {
+                padding: 12px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sorteio Samsung A06</h1>
+        
+        <div id="formulario">
+            <div class="form-group">
+                <label for="nome">Nome Completo:</label>
+                <input type="text" id="nome" placeholder="Digite seu nome" required>
+            </div>
+            <div class="form-group">
+                <label for="whatsapp">WhatsApp (com DDD):</label>
+                <input type="tel" id="whatsapp" placeholder="Ex: 11987654321" required>
+            </div>
+            <button class="btn btn-sortear" onclick="validarDados()">Gerar Número do Bilhete</button>
+        </div>
+        
+        <div id="area-sorteio" class="hidden">
+            <div id="resultado">--</div>
+            <p id="dados-usuario"></p>
+            
+            <button class="btn btn-pdf" onclick="gerarPDF()">Download Comprovante (PDF)</button>
+            <button class="btn btn-whatsapp" onclick="compartilharWhatsApp()">Compartilhar no WhatsApp</button>
+            <button class="btn btn-novo" onclick="novoSorteio()">Participar Novamente</button>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <h3>Regras do Sorteio:</h3>
+            <ul>
+                <li>100 bilhetes numerados de 00 a 99</li>
+                <li>Valor: R$ 10,00 por bilhete</li>
+                <li>Sorteio em 05/04/2024</li>
+                <li>É permitida a compra de múltiplos bilhetes</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let numeroSorteado = null;
+        let usuario = {
+            nome: '',
+            whatsapp: ''
+        };
+        
+        // Função para validar dados antes do sorteio
+        function validarDados() {
+            usuario.nome = document.getElementById("nome").value.trim();
+            usuario.whatsapp = document.getElementById("whatsapp").value.trim();
+            
+            if (!usuario.nome || !usuario.whatsapp) {
+                alert("Por favor, preencha todos os campos!");
+                return;
+            }
+            
+            if (!/^\d+$/.test(usuario.whatsapp) || usuario.whatsapp.length < 11) {
+                alert("WhatsApp inválido! Digite apenas números com DDD.");
+                return;
+            }
+            
+            sortearBilhete();
+        }
+        
+        // Função para sortear número do bilhete
+        function sortearBilhete() {
+            numeroSorteado = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+            document.getElementById("resultado").innerText = numeroSorteado;
+            document.getElementById("dados-usuario").innerHTML = 
+                `<strong>Participante:</strong> ${usuario.nome}<br>
+                 <strong>WhatsApp:</strong> ${formatarWhatsApp(usuario.whatsapp)}`;
+            
+            // Mostra área de resultado e esconde formulário
+            document.getElementById("formulario").classList.add("hidden");
+            document.getElementById("area-sorteio").classList.remove("hidden");
+            
+            // Efeito visual
+            const resultado = document.getElementById("resultado");
+            resultado.style.transform = "scale(1.1)";
+            setTimeout(() => {
+                resultado.style.transform = "scale(1)";
+            }, 300);
+        }
+        
+        // Função para formatar WhatsApp
+        function formatarWhatsApp(num) {
+            return `(${num.substring(0,2)}) ${num.substring(2,7)}-${num.substring(7)}`;
+        }
+        
+        // Função para gerar PDF
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Cabeçalho
+            doc.setFillColor(20, 40, 160);
+            doc.rect(0, 0, 210, 30, 'F');
+            doc.setFontSize(20);
+            doc.setTextColor(255, 255, 255);
+            doc.text("Sorteio Samsung A06", 105, 20, { align: 'center' });
+            
+            // Corpo
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 0);
+            doc.text("Comprovante de Participação", 105, 50, { align: 'center' });
+            
+            doc.setFontSize(12);
+            doc.text(`Nome: ${usuario.nome}`, 20, 70);
+            doc.text(`WhatsApp: ${formatarWhatsApp(usuario.whatsapp)}`, 20, 80);
+            
+            doc.setFontSize(72);
+            doc.setTextColor(20, 40, 160);
+            doc.text(numeroSorteado, 105, 120, { align: 'center' });
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text("Data do sorteio: 05/04/2024", 105, 140, { align: 'center' });
+            doc.text("Este documento comprova sua participação no sorteio.", 105, 150, { align: 'center' });
+            
+            // Rodapé
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text("Sorteio válido mediante comprovação de pagamento.", 105, 280, { align: 'center' });
+            
+            doc.save(`Bilhete_${usuario.nome.replace(/\s/g,'_')}_${numeroSorteado}.pdf`);
+        }
+        
+        // Função para compartilhar no WhatsApp
+        function compartilharWhatsApp() {
+            const texto = `✅ Sorteio Samsung A06 Número do bilhete : *${numeroSorteado}*\n\n` +
+                         `*Nome:* ${usuario.nome}\n` +
+                         `*WhatsApp:* ${formatarWhatsApp(usuario.whatsapp)}\n\n` +
+                         `Prêmio: Samsung Galaxy A06 128GB\n` +
+                         `Data do sorteio: 05/04/2024`;
+            
+            window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+        }
+        
+        // Função para novo sorteio
+        function novoSorteio() {
+            // Limpa campos (opcional - pode remover para manter os dados)
+            document.getElementById("nome").value = '';
+            document.getElementById("whatsapp").value = '';
+            
+            // Mostra formulário e esconde resultados
+            document.getElementById("formulario").classList.remove("hidden");
+            document.getElementById("area-sorteio").classList.add("hidden");
+            
+            // Foca no campo nome
+            document.getElementById("nome").focus();
+        }
+    </script>
+</body>
+</html>
