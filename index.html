@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sorteio Samsung A06</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Bilhete Online</title>
     <style>
         :root {
             --cor-primaria: #1428A0; /* Azul Samsung */
@@ -122,7 +121,7 @@
             </div>
             <div class="form-group">
                 <label for="whatsapp">WhatsApp (com DDD):</label>
-                <input type="tel" id="whatsapp" placeholder="Ex: 11987654321" required>
+                <input type="tel" id="whatsapp" placeholder="Ex: 91987654321" required>
             </div>
             <button class="btn btn-sortear" onclick="validarDados()">Gerar Número do Bilhete</button>
         </div>
@@ -137,129 +136,206 @@
         </div>
         
         <div style="margin-top: 30px;">
-            <h3>Regras do Sorteio:</h3>
+            <h3>Informações:</h3>
             <ul>
                 <li>100 bilhetes numerados de 00 a 99</li>
                 <li>Valor: R$ 10,00 por bilhete</li>
-                <li>Sorteio em 05/04/2024</li>
                 <li>É permitida a compra de múltiplos bilhetes</li>
             </ul>
         </div>
     </div>
+        <!-- Scripts CORRETOS do Firebase -->
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+        <script>
+            // Configuração do Firebase (SUAS CREDENCIAIS)
+            const firebaseConfig = {
+                apiKey: "AIzaSyAS18FrNWafvyHZq5dzA0v7CyLNKiNqxUA",
+                authDomain: "dadosdosrteio.firebaseapp.com",
+                projectId: "dadosdosrteio",
+                storageBucket: "dadosdosrteio.appspot.com",
+                messagingSenderId: "618468932122",
+                appId: "1:618468932122:web:3d135bf8426aec9e66afa3",
+                measurementId: "G-H8MSK475N4"
+            };
+    
+            // Inicialização do Firebase
+            let db;
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log("Firebase inicializado com sucesso!");
+            } catch (error) {
+                console.error("Erro ao inicializar Firebase:", error);
+            }
+    
+            // Variáveis globais
+            let numeroSorteado = null;
+            const usuario = {
+                nome: '',
+                whatsapp: ''
+            };
+    
+            // Função para validar dados
+            function validarDados() {
+                usuario.nome = document.getElementById("nome").value.trim();
+                usuario.whatsapp = document.getElementById("whatsapp").value.trim();
+                
+                if (!usuario.nome || !usuario.whatsapp) {
+                    alert("Por favor, preencha todos os campos!");
+                    return;
+                }
+                
+                if (!/^\d+$/.test(usuario.whatsapp) || usuario.whatsapp.length < 11) {
+                    alert("WhatsApp inválido! Digite apenas números com DDD.");
+                    return;
+                }
+                
+                sortearBilhete();
+            }
+    
+            // Função para salvar no Firebase (ATUALIZADA)
+            async function salvarNoFirebase(nome, whatsapp, bilhete) {
+                const query = await db.collection("participantes").where("bilhete", "==", bilhete).get();
+                if (!query.empty) {
+                    return { status: "error", message: "Número já sorteado" };
+                }
+                if (!db) {
+                    console.error("Firestore não inicializado");
+                    return { status: "error", message: "Banco de dados não disponível" };
+                }
 
-    <script>
-        // Variáveis globais
-        let numeroSorteado = null;
-        let usuario = {
-            nome: '',
-            whatsapp: ''
-        };
+                try {
+                const query = await db.collection("participantes").where("bilhete", "==", bilhete).get();
+                if (!query.empty) {
+                    return { 
+                        status: "error", 
+                        message: "Este número já foi sorteado para outro participante" 
+                    };
+                }
+                } catch (erro) {
+                    console.error("Erro ao verificar bilhete:", erro);
+                    // Continua mesmo com erro na verificação para não bloquear o sorteio
+                }
+
+
+                try {
+                    const docRef = await db.collection("participantes").add({
+                        nome: nome,
+                        whatsapp: whatsapp,
+                        bilhete: bilhete,
+                        data: firebase.firestore.FieldValue.serverTimestamp(),
+                        status: "pendente"
+                    });
+                    return { status: "success", id: docRef.id };
+                } catch (error) {
+                    console.error("Erro ao salvar:", error);
+                    return { status: "error", message: error.message };
+                }
+            }
+    
+            // Função principal do sorteio (ATUALIZADA)
+            async function sortearBilhete() {
+                try {
+                    // Gera número aleatório
+                    numeroSorteado = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+                    
+                    // Atualiza a UI
+                    document.getElementById("resultado").textContent = numeroSorteado;
+                    document.getElementById("dados-usuario").innerHTML = `
+                        <strong>Participante:</strong> ${usuario.nome}<br>
+                        <strong>WhatsApp:</strong> ${formatarWhatsApp(usuario.whatsapp)}`;
+                    
+                    // Salva no Firebase
+                    const resultado = await salvarNoFirebase(usuario.nome, usuario.whatsapp, numeroSorteado);
+                    
+                    if (resultado.status !== "success") {
+                        alert("Bilhete gerado com sucesso! Número: " + numeroSorteado + 
+                              "\nOcorreu um problema ao salvar, por favor tire um print desta tela.");
+                    }
+                    
+                    // Mostra/oculta seções
+                    document.getElementById("formulario").classList.add("hidden");
+                    document.getElementById("area-sorteio").classList.remove("hidden");
+                    
+                } catch (error) {
+                    console.error("Erro no sorteio:", error);
+                    alert("Ocorreu um erro. Por favor, tente novamente.");
+                }
+            }
+    
+            // Função para formatar WhatsApp
+            function formatarWhatsApp(num) {
+                return num.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+            }
+    
+            // Função para gerar PDF (mantida igual)
+            function gerarPDF() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Cabeçalho
+                doc.setFillColor(20, 40, 160);
+                doc.rect(0, 0, 210, 30, 'F');
+                doc.setFontSize(20);
+                doc.setTextColor(255, 255, 255);
+                doc.text("Sorteio Samsung A06", 105, 20, { align: 'center' });
+                
+                // Corpo
+                doc.setFontSize(16);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Comprovante de Participação", 105, 50, { align: 'center' });
+                
+                doc.setFontSize(12);
+                doc.text(`Nome: ${usuario.nome}`, 20, 70);
+                doc.text(`WhatsApp: ${formatarWhatsApp(usuario.whatsapp)}`, 20, 80);
+                
+                doc.setFontSize(72);
+                doc.setTextColor(20, 40, 160);
+                doc.text(numeroSorteado, 105, 120, { align: 'center' });
+                
+                doc.setFontSize(10);
+                doc.setTextColor(0, 0, 0);
+                doc.text("Data do sorteio: 05/04/2024", 105, 140, { align: 'center' });
+                doc.text("Este documento comprova sua participação no sorteio.", 105, 150, { align: 'center' });
+                
+                // Rodapé
+                doc.setFontSize(8);
+                doc.setTextColor(100, 100, 100);
+                doc.text("Sorteio válido mediante comprovação de pagamento.", 105, 280, { align: 'center' });
+                
+                doc.save(`Bilhete_${usuario.nome.replace(/\s/g,'_')}_${numeroSorteado}.pdf`);
+            }
         
-        // Função para validar dados antes do sorteio
-        function validarDados() {
-            usuario.nome = document.getElementById("nome").value.trim();
-            usuario.whatsapp = document.getElementById("whatsapp").value.trim();
-            
-            if (!usuario.nome || !usuario.whatsapp) {
-                alert("Por favor, preencha todos os campos!");
-                return;
+            // Função para compartilhar no WhatsApp
+            function compartilharWhatsApp() {
+                const texto = `✅ Sorteio Samsung A06 Número do bilhete : *${numeroSorteado}*\n\n` +
+                            `*Nome:* ${usuario.nome}\n` +
+                            `*WhatsApp:* ${formatarWhatsApp(usuario.whatsapp)}\n\n` +
+                            `Prêmio: Samsung Galaxy A06 128GB\n` +
+                            `Data do sorteio: 05/04/2024`;
+                
+                window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+            }
+        
+            // Função para novo sorteio
+            function novoSorteio() {
+                // Limpa campos (opcional - pode remover para manter os dados)
+                document.getElementById("nome").value = '';
+                document.getElementById("whatsapp").value = '';
+                
+                // Mostra formulário e esconde resultados
+                document.getElementById("formulario").classList.remove("hidden");
+                document.getElementById("area-sorteio").classList.add("hidden");
+                
+                // Foca no campo nome
+                document.getElementById("nome").focus();
             }
             
-            if (!/^\d+$/.test(usuario.whatsapp) || usuario.whatsapp.length < 11) {
-                alert("WhatsApp inválido! Digite apenas números com DDD.");
-                return;
-            }
-            
-            sortearBilhete();
-        }
-        
-        // Função para sortear número do bilhete
-        function sortearBilhete() {
-            numeroSorteado = Math.floor(Math.random() * 100).toString().padStart(2, '0');
-            document.getElementById("resultado").innerText = numeroSorteado;
-            document.getElementById("dados-usuario").innerHTML = 
-                `<strong>Participante:</strong> ${usuario.nome}<br>
-                 <strong>WhatsApp:</strong> ${formatarWhatsApp(usuario.whatsapp)}`;
-            
-            // Mostra área de resultado e esconde formulário
-            document.getElementById("formulario").classList.add("hidden");
-            document.getElementById("area-sorteio").classList.remove("hidden");
-            
-            // Efeito visual
-            const resultado = document.getElementById("resultado");
-            resultado.style.transform = "scale(1.1)";
-            setTimeout(() => {
-                resultado.style.transform = "scale(1)";
-            }, 300);
-        }
-        
-        // Função para formatar WhatsApp
-        function formatarWhatsApp(num) {
-            return `(${num.substring(0,2)}) ${num.substring(2,7)}-${num.substring(7)}`;
-        }
-        
-        // Função para gerar PDF
-        function gerarPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Cabeçalho
-            doc.setFillColor(20, 40, 160);
-            doc.rect(0, 0, 210, 30, 'F');
-            doc.setFontSize(20);
-            doc.setTextColor(255, 255, 255);
-            doc.text("Sorteio Samsung A06", 105, 20, { align: 'center' });
-            
-            // Corpo
-            doc.setFontSize(16);
-            doc.setTextColor(0, 0, 0);
-            doc.text("Comprovante de Participação", 105, 50, { align: 'center' });
-            
-            doc.setFontSize(12);
-            doc.text(`Nome: ${usuario.nome}`, 20, 70);
-            doc.text(`WhatsApp: ${formatarWhatsApp(usuario.whatsapp)}`, 20, 80);
-            
-            doc.setFontSize(72);
-            doc.setTextColor(20, 40, 160);
-            doc.text(numeroSorteado, 105, 120, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.text("Data do sorteio: 05/04/2024", 105, 140, { align: 'center' });
-            doc.text("Este documento comprova sua participação no sorteio.", 105, 150, { align: 'center' });
-            
-            // Rodapé
-            doc.setFontSize(8);
-            doc.setTextColor(100, 100, 100);
-            doc.text("Sorteio válido mediante comprovação de pagamento.", 105, 280, { align: 'center' });
-            
-            doc.save(`Bilhete_${usuario.nome.replace(/\s/g,'_')}_${numeroSorteado}.pdf`);
-        }
-        
-        // Função para compartilhar no WhatsApp
-        function compartilharWhatsApp() {
-            const texto = `✅ Sorteio Samsung A06 Número do bilhete : *${numeroSorteado}*\n\n` +
-                         `*Nome:* ${usuario.nome}\n` +
-                         `*WhatsApp:* ${formatarWhatsApp(usuario.whatsapp)}\n\n` +
-                         `Prêmio: Samsung Galaxy A06 128GB\n` +
-                         `Data do sorteio: 05/04/2024`;
-            
-            window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-        }
-        
-        // Função para novo sorteio
-        function novoSorteio() {
-            // Limpa campos (opcional - pode remover para manter os dados)
-            document.getElementById("nome").value = '';
-            document.getElementById("whatsapp").value = '';
-            
-            // Mostra formulário e esconde resultados
-            document.getElementById("formulario").classList.remove("hidden");
-            document.getElementById("area-sorteio").classList.add("hidden");
-            
-            // Foca no campo nome
-            document.getElementById("nome").focus();
-        }
-    </script>
-</body>
+    
+  
+        </script>
+    </body>
 </html>
